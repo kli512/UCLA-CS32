@@ -1,0 +1,193 @@
+My actor hierarchy is as follows:
+
+GraphObject
+	Actor
+		Wall
+		Interactable
+			Exit
+			Pit
+			Landmine
+			TimedInteractable
+				Flame
+				Vomit
+			Goodie
+				VaccineGoodie
+				GasCanGoodie
+				LandmineGoodie
+		LivingActor
+			Human
+				Penelope
+				Citizen
+			Zombie
+				DumbZombie
+				SmartZombie
+
+1)
+The public member functions of Actor are as follow:
+
+virtual void doSomething() = 0;
+    This is declared as pure virtual because no Actor should be able to be instantiated; a generic Actor doesn't have a defined doSomething that it should accomplish.
+    Additionally, the programmer should be forced to define doSomething() for all instiable actors.
+
+virtual bool blocksMovement() = 0;
+    This is declared as pure virtual because there is no default answer to whether or not an actor can block movement.
+    Therefore, behavior shouldn't be given and the programmer should be forced to define blocksMovement for all instantiable classes.
+
+virtual bool killable() { return false; };
+virtual bool lethal() { return false; };
+virtual bool landmineActivator() { return false; };
+virtual bool canExit() { return false; };
+virtual bool infectious() { return false; };
+virtual bool canBeInfected() { return false; };
+virtual bool scary() { return false; };
+virtual bool blocksFlames() { return false; };
+    This set of functions serves to distinguish the types of actors from one another, allowing the StudentWorld to act on only the actors it intends to.
+    The use of non-specific functions (i.e. killable() instead of isPenelope() or isCitizen()) allows for potential expansion of the game, and simpler and more understandable code.
+    They are all made by default to return false as for most properties, most actors do not have them.
+        However, they are declared virtually with the reason being certain classes will need to redeclare them and change their behavior
+        For example, most objects are not killable, but any living object (dumb zombie, smart zombie, citizen, or Penelope) is killable.
+
+virtual void remove() { alive = false; };
+    This function exists to allow for removing of an actor without killing them (e.g. telling Penelope she ran into a flame).
+    This is important because actors like Citizens need to be able to be removed (e.g. when they reach an exit) but that should not indicate the citizen dying (which would decrease score and play the wrong sound).
+
+    Wall's public member functions serve to define its behavior and define its doSomething() function.
+        Its doSomething() does nothing because it is a Wall
+        A wall blocks movement and block flames.
+
+    Interactable is another abstract base class because the classes under it share the same property that they can be interacted with.
+        It does not block movement because interactables can be moved into to be interacted with.
+
+        Exit is an interactable actor
+            doSomething() is written to check if any citizen are overlapping it; if so, it saves them and awards points to the player
+            If Penelope is overlapping it and there are no citizens left to save, it tells the StudentWorld that the level has been completed successfully.
+
+        Pit is an interactable actor
+            Its doSomething() function does nothing because pits do not do anything during the tick (LivingActors check for overlapping with pits)
+            It is lethal
+
+    Landmine is an interactable actor 
+        doSomething() decreases the safety timer and if the timer has passed and an actor who would activate a landmine is overlapping it, it explodes
+
+    TimedInteractable is a class that is parent to Vomit and Flame, as they both have a short timer and then disappear.
+        doSomething() is actually defined in TimedInteractable because it is the exact same for both vomit and flame, as overlapping detection is left to LivingActors
+
+        Flame is a TimedInteractable actor
+            It is both lethal and a landmine activator
+
+        Vomit is a TimedInteractable actor
+            It is infectious
+
+    Goodie is a derived class of Interactables
+        All goodies have the same doSomething, so it is defined in the Goodie class
+            It is defined such that if it is touching Penelope, it will give Penelope the correct goodies and in the correct amount.
+
+        VaccineGoodie, GasCanGoodie, and LandmineGoodie look similar but implement the giveGoodie() function, a private function, differently.
+            The reason is because they each give a different goodie and different amount to Penelope.
+
+    LivingActor is a derived class of Actor
+        All living actors block movement, are killable, and are landmine activators so those properties are given in the LivingActor class
+        doLivingActorStuff() is defined to check alive state and see if touching a lethal actor because all LivingActors will do that at the start of their doSomething()
+
+        Human is a derived class of LivingActors
+            All humans can be infected; thus, they have methods to check if infected, set infection state, and modify level of infectedness.
+            Additionally, they are all capable of exiting the level.
+
+            Penelope is a derived class of Human
+                doSomething() is defined for Penelope to doLivingActorStuff(), then take user input and translate it into game mechanics
+                    e.g. shooting flamethrower or using a vaccine
+                Because Penelope can hold goodies, accessors and mutators for those private variables ar neccessary.
+
+            Citizen is a derived class of Human
+                doSomething() is defined for Citizens to doLivingActorStuff(), then use their basic AI to move.
+
+        Zombie is a derived class of LivingActor
+            All zombies are scary for citizens.
+            Additionally, both dumb and smart zombies have to do lots of normal zombie maintenance, so a protected doZombieStuff() method is given for that.
+
+            DumbZombie is a derived class of Zombie
+                doSomething() is defined to doZombieStuff(), then use random generators to determine its movement
+
+            SmartZombie is a derived class of Zombie
+                doSomething() is defined to doZombieStuff(), then look for infectable targets
+                    If one is found nearby, the smart zombie sets a course towards them
+                    If there are none closeby, it moves randomly like a dumb zombie
+
+2)
+All functionality has been implemented.
+
+3)
+Because functionality wasn't required to be implemented in any specific class, I moved much of the interaction functionality from the interactable actors themselves to the living actors interacting with them.
+    One of the main reasons I did this was because it avoided issues such as multiple actors interacting with the same interactable during the same tick.
+Many of the functions I wrote, I wrote multiple overloads for and I found this to be particularly efficient as it prevented me from having to write code like (*iterator)->getX() and such by looking at the pointers themselves and pulling X and Y coordinates then.
+When looking for the best possible move, I was comparing the Euclidean distance but storing the difference in x and y.
+    While I could have calculated the distance whenever I wanted the value, that would have required copying and pasting significantly with lots of redundancy
+    I was motivated by Mathematica's delayed defintion operator (:=), which allowed writing for example
+        int a = 10, b = 5;
+        int x := a + b;
+        cout << x << endl; // print: 15
+        a = 1, b = 2;
+        cout << x << endl; // print: 3
+    The solution I found was to use a lambda function to define x with no parameters, allowing me to call x() as if it were a delayed definition variable.
+    The c++ equivalent code I found was as follows:
+        int a = 10, b = 5;
+        auto x = [&](){ return a + b; }; // the captures are defaulted to reference, allowed it to use refernces to a and b
+        cout << x() << endl; // print: 15
+        a = 1, b = 2;
+        cout << x() << endl; // print: 3
+
+4)
+Wall:
+    The wall class was tested by placing walls and checking that they properly blocked movement by trapping zombies and citizens in walls and running into walls with Penelope.
+    The flame blocking property was tested by shooting the flamethrower at it.
+
+Exit:
+    The exit class was tested by having citizens run into it and checking that the correct sound played, the citizen was removed, and points were added.
+    Additionally, I tried running into it with Penelope both with citizens left on the field and without.
+
+Pit:
+    The pit class was tested by having zombies and citizens walk into on their own and checking sounds and point values, and that the acator was removed.
+    Interaction with Penelope was tested by running into them with Penelope.
+
+Landmine:
+    Landmies were tested by placing them and waiting to see if the safety ticks worked, shooting fire at it, and running citizens, zombies, and penelope at it.
+    The aftermath (fire and pit) were checking near walls to see if the fire spawned correctly along with normally to check for normal behavior.
+
+Flame:
+    Flames were tested by shooting them at citizens and zombies. Also, moving one tick at a time allowed checking to see if it lasted for the right number of ticks.
+    To test Penelope on them, I exploded landmines while standing near to see if touching fire would cause Penelope's death.
+    To see if it detonated landmines, I laid a landmine on the ground and shot it with the flamethrower.
+
+Vomit:
+    The vomit was tested by standing near a zombie and putting citizens next to zombies. Moving one tick at a time allowed checking to see if it lasted for the right number of ticks.
+    By timing the approximate time before dying for both Penelope and citizens and checking their infection level each tick proved that it worked as intended.
+
+VaccineGoodie, LandmineGoodie, and GasCanGoodie:
+    In the level01.txt, I placed each goodie and tested them accordingly.
+        For the vaccine, I picked one up, was infected by a zombie, and used the vaccine. I checked that there were none left after picking one up and using one.
+            By outputting the infection level of Penelope each tick and seeing that it stopped increasing, it was clear it worked.
+        For the landmine, I picked it up and tested placing both and checking if both the first and last ones worked properly and that two were given.
+        For the GasCanGoodie, I picked up the goodie and tested that I had 5 charges and that the flamethrower threw flames properly
+            (ie it was stopped by walls, put 3 in a line, and killed LivingActors).
+
+Penelope:
+    I tested Penelope by first playing games and making sure it felt right, then checking specific niche behavior.
+        I made sure to test behavior by using goodies, killing zombies, dying to any lethal actor and to infection, and checking edge cases.
+        I also searched for abnormal behavior by running into walls, trying to run into the flame from my own flamethrower, and standing on a just placed landmine.
+
+Citizen:
+    I tested the citizen's human characteristics by shooting it with a flamethrower, baiting it over a pit, and trapping it in a room with a zombie.
+    To test its AI, I trapped it in a small room and ran around it as Penelope to check that it followed her, put it near zombies and made sure it ran away, and checked movement if both near a zombie and Penelope.
+    I made sure things like losing points when killing a citizen and gaining points when saving a citizen worked properly.
+
+DumbZombie:
+    I tested the dumb zombie's characteristics by shooting it with a flamethrower, baiting it over a pit, and trapping it in a room with a citizen.
+    To test its AI, I put it near citizens/Penelope and made sure it vomited sometimes.
+    I made sure things like gaining points when killing a zombie worked properly.
+    I also killed many to make sure vaccines sometimes were dropped.
+
+SmartZombie:
+    I tested the smart zombie's characteristics by shooting it with a flamethrower, baiting it over a pit, and trapping it in a room with a citizen.
+    To test its AI, I trapped it in a small room and ran around it as Penelope to check that it followed her and put it near citizens to make sure it followed them.
+    I also let it get near citizens and Penelope to check that it vomited somtimes.
+    I made sure things like gaining points when killing a zombie worked properly.

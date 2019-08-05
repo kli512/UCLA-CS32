@@ -1,0 +1,43 @@
+1) No known bugs
+2) Each method satisfies the big o requirement
+3)
+Trie::find() works like this:
+
+find which values match a key
+    if the key must exactly match it
+        Repeatedly look at the first letter in the key and look for a child that has that path
+            if we reached our end point, return what we've found
+            if such a child exists
+                move there and remove the first letter from the key to update the path
+            if such a child does not exist then nothing matches that key
+                return an empty vector
+    if the key doesn't need to exactly match it
+        recursively run down the tree storing if we've hit a mismatch yet
+            if we're mismatching for the second time, we've failed
+                return nothing from this recursion
+            otherwise, check the first letter of the key and look for a child that has that path   
+                if we reached our end point, add what we've found from this recursion to the vector
+    send back what we've found
+
+GenomeMatcher::findGenomesWithThisDNA() works like this:
+
+find genomes with this dna
+	if parameters are invalid
+        return false
+
+	look for the first minimum search length characters from the fragment
+
+	for each genome we've found to match the first minimum search letters
+		check how many of the letters match from the beginning of the fragment till the end
+
+		if we haven't matched at least the minimum number of letters, this match won't works
+            continue onto the next genome
+
+		store in a map the length and position of the match, unless it had already been found.
+        if it had been found, set the position and length of the match to the match with the longer length
+	
+    add in all our matches found
+
+	if no matches were found
+        return failed
+    otherwise, return success

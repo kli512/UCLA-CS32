@@ -1,0 +1,118 @@
+2)
+When attempting to insert a Coord into the Set, the Set checks if that coord already exists in there by using the == operator and checks ordering using the < operator.
+However, neither operator has been defined for the Coord class.
+Therefore, using them causes an error.
+
+3 b)
+If only one parameter had been given, the recursive calls would be unable to tell where they were i.e. a recursive call to the Window PlainMenuItem would not know that the path to itself was File/New,
+so it would be unable to print the full path to itself.
+
+It had to be implemented recursively because recursion allowed the function to know its position (the path to it) and branch off to each submenu.
+
+4 a)
+The time complexity is O(N^3) because there are 3 nested for loops, all running from 0 to N and the functions called inside have constant time. The calls that exist only in the first or second for loops
+all have constant time complexity, so those become kN and kN^2 terms which are asympotically dominated by N^3.
+
+b)
+The time complexity continues to be O(N^3) because i still reaches a maximal value of N. Although on average half as many calls would be made versus the original, a constant multiple does not affect time complexity.
+
+5 a)
+void unite(const Set& set1, const Set& set2, Set& result)
+{
+
+    const Set* sp = &set2; // const
+    if (&result == &set1) // const
+    {
+        if (&result == &set2) // const
+                return;
+    }
+    else if (&result == &set2) // const
+        sp = &set1; // accesses each value of set1 once
+    else
+    {
+        result = set1; // accesses each value of set1 once
+        if (&set1 == &set2) // constant time
+            return;
+    }
+
+    for (int k = 0; k < sp->size(); k++) // performs N times
+    {
+        ItemType v;
+        sp->get(k, v); // get each item // takes maximally N operations to find (head for example)
+        result.insert(v); // calls findFirstAtLeast taking maximally N + N - 1 (average ~1.5 N) operations and accessing each element of result // insert before is constant time
+    }
+}
+
+The time complexity is O(N^2) because the for loop is called N times and at worst, requires iterating through N + N - 1 elements (last element of set being inserted into result, 
+assuming intersection of s2 and result is null) so worse case is N*(2N - 1) => O(N^2)
+
+b)
+void Set::unite(const Set& set1, const Set& set2)
+{
+    vector<ItemType> v;
+
+      // copy all items into v;
+    for (Node* p1 = set1.m_head->m_next; p1 != set1.m_head; p1 = p1->m_next) // accesses all N nodes of set1
+        v.push_back(p1->m_value);
+    for (Node* p2 = set2.m_head->m_next; p2 != set2.m_head; p2 = p2->m_next) // accesses all N nodes of set2
+        v.push_back(p2->m_value);
+
+      // sort v using an O(N log N) algorithm
+    sort(v.begin(), v.end());
+
+      // delete result nodes (other than the dummy node)
+    while (m_head->m_next != m_head) // clearning N nodes
+        doErase(m_head->m_next);
+
+      // copy unique items from v into result
+    for (size_t k = 0; k < v.size(); k++) // accesses all elements of v, maximally of size 2N
+    {
+        if (k == 0  ||  v[k] != v[k-1])  // add non-duplicates
+	    insertBefore(m_head, v[k]); // constant time
+    }
+
+      // v is destroyed when function returns
+}
+
+The part with the highest time complexity is the sort of v, which is O(N log N) so the time complexity is O(N log N)
+
+c)
+
+void Set::unite(const Set& set1, const Set& set2)
+{
+    const Set* sp = &set2;
+    if (this == &set1)
+    {
+        if (this == &set2)
+                return;
+    }
+    else if (this == &set2)
+        sp = &set1;
+    else
+    {
+        *this = set1; // O(N) time, accesses each value of set1 once
+        if (&set1 == &set2)
+            return;
+    }
+    // all constant time operations above
+
+    Node* p1 = m_head->m_next;
+    Node* p2 = sp->m_head->m_next;
+    while (p1 != m_head  &&  p2 != sp->m_head)
+    {
+        if (p1->m_value < p2->m_value)
+            p1 = p1->m_next; // calls maximally N times (resets to head -> exits loop)
+        else
+        {
+            if (p1->m_value > p2->m_value)
+                insertBefore(p1, p2->m_value); // calls maximally N times if all no intersection between sets
+            else
+                p1 = p1->m_next; // calls maximally N times if no unique values
+            p2 = p2->m_next;
+        }
+    }
+    for ( ; p2 != sp->m_head; p2 = p2->m_next)
+        insertBefore(m_head, p2->m_value); // cant call more than n times
+}
+
+Every part has a maximal time complexity of O(N), so the function's time complexity is O(N)
